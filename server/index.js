@@ -7,7 +7,10 @@ import {
   generateJDInterviewQuestions,
   evaluateInterviewResponse,
   optimizeResumeBullet,
-  generateCareerPathing
+  generateCareerPathing,
+  DEFAULT_LLM_CONFIG,
+  getActiveLLMConfig,
+  testLLMConnection
 } from './services/aiEngine.js';
 
 import path from 'path';
@@ -407,12 +410,13 @@ app.post('/api/interview/generate-questions', (req, res) => {
 });
 
 // Evaluate Candidate Answer against JD Criteria
-app.post('/api/interview/evaluate', (req, res) => {
+// Evaluate Candidate Answer against JD Criteria (using local LLM)
+app.post('/api/interview/evaluate', async (req, res) => {
   const store = getStore();
   const { question, userAnswer, jobId } = req.body;
   const job = store.jobs.find(j => j.id === jobId) || store.jobs[0];
 
-  const evaluation = evaluateInterviewResponse(question, userAnswer, job);
+  const evaluation = await evaluateInterviewResponse(question, userAnswer, job);
   res.json({ success: true, evaluation });
 });
 
@@ -450,11 +454,96 @@ app.get('/api/interview/history/:candidateId', (req, res) => {
 // 5. RESUME OPTIMIZER & CAREER GUIDANCE APIS
 // ==========================================
 
-// AI Resume Bullet Point Enhancer
-app.post('/api/resume/optimize-bullet', (req, res) => {
+// AI Resume Bullet Point Enhancer (using local LLM)
+app.post('/api/resume/optimize-bullet', async (req, res) => {
   const { bullet, targetRole } = req.body;
-  const result = optimizeResumeBullet(bullet, targetRole);
+  const result = await optimizeResumeBullet(bullet, targetRole);
   res.json({ success: true, result });
+});
+
+// Local / Modular LLM Engine Status
+app.get('/api/ai/status', async (req, res) => {
+  const config = getActiveLLMConfig();
+  const endpointUrl = (config.endpointUrl || 'http://127.0.0.1:8080').replace(/\/+$/, '');
+  try {
+    const check = await fetch(`${endpointUrl}/v1/models`);
+    if (check.ok) {
+      const data = await check.json();
+      return res.json({
+        success: true,
+        llm: {
+          running: true,
+          provider: config.provider || 'llama.cpp',
+          model: config.modelName || 'Qwen3-0.6B-Q4_K_M-Instruct.gguf',
+          endpoint: endpointUrl,
+          models: data.data || []
+        }
+      });
+    }
+  } catch (err) {
+    // not responding
+  }
+  res.json({
+    success: true,
+    llm: {
+      running: false,
+      provider: config.provider || 'llama.cpp',
+      endpoint: endpointUrl,
+      status: 'offline or starting'
+    }
+  });
+});
+
+// Get modular LLM configuration
+app.get('/api/ai/config', async (req, res) => {
+  const store = getStore();
+  const config = store.llmConfig || DEFAULT_LLM_CONFIG;
+  let detectedModels = [];
+  try {
+    const endpointUrl = (config.endpointUrl || 'http://127.0.0.1:8080').replace(/\/+$/, '');
+    const check = await fetch(`${endpointUrl}/v1/models`);
+    if (check.ok) {
+      const data = await check.json();
+      detectedModels = (data.data || []).map(m => m.id);
+    }
+  } catch (err) {}
+
+  res.json({
+    success: true,
+    config,
+    detectedModels
+  });
+});
+
+// Update modular LLM configuration from UI
+app.post('/api/ai/config', (req, res) => {
+  const store = getStore();
+  const { provider, endpointUrl, modelName, enabled, parameters } = req.body;
+
+  store.llmConfig = {
+    provider: provider || 'llama.cpp',
+    endpointUrl: endpointUrl || 'http://127.0.0.1:8080',
+    modelName: modelName || 'Qwen3-0.6B-Q4_K_M-Instruct.gguf',
+    enabled: enabled !== undefined ? Boolean(enabled) : true,
+    parameters: typeof parameters === 'string' ? parameters : JSON.stringify(parameters, null, 2)
+  };
+
+  saveStore(store);
+  res.json({ success: true, config: store.llmConfig });
+});
+
+// Test connection with supplied LLM configuration on-demand
+app.post('/api/ai/test-connection', async (req, res) => {
+  const result = await testLLMConnection(req.body);
+  res.json(result);
+});
+
+// Reset LLM configuration to default local 0.6B llama.cpp
+app.post('/api/ai/reset-config', (req, res) => {
+  const store = getStore();
+  store.llmConfig = { ...DEFAULT_LLM_CONFIG };
+  saveStore(store);
+  res.json({ success: true, config: store.llmConfig });
 });
 
 // Career Pathing & Salary Benchmark

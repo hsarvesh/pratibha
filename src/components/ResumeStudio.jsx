@@ -198,9 +198,14 @@ export default function ResumeStudio({ currentUser, onUpdateProfile }) {
             {/* Results Card */}
             <div className="glass-panel" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>AI Optimized Result</h3>
-                  <span className="badge badge-emerald">X-Y-Z Formula</span>
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    <span className="badge badge-purple" title="Engine powering this inference">
+                      <Sparkles size={11} /> {optimizedResult?.engine || 'Local Qwen3-0.6B (llama.cpp)'}
+                    </span>
+                    <span className="badge badge-emerald">X-Y-Z Formula</span>
+                  </div>
                 </div>
 
                 {optimizedResult ? (

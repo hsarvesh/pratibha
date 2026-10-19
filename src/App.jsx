@@ -10,6 +10,8 @@ import CareerPathGuidance from './components/CareerPathGuidance';
 import UserProfile from './components/UserProfile';
 import PricingPlans from './components/PricingPlans';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
+import LLMConfigModal from './components/LLMConfigModal';
+import GlobalLandingIntro from './components/GlobalLandingIntro';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('jobs');
@@ -22,6 +24,8 @@ export default function App() {
   const [savedJobIds, setSavedJobIds] = useState(['job_1']);
   const [selectedJobForModal, setSelectedJobForModal] = useState(null);
   const [preselectedJobForInterview, setPreselectedJobForInterview] = useState(null);
+  const [showLLMModal, setShowLLMModal] = useState(false);
+  const [showLandingIntro, setShowLandingIntro] = useState(true);
   const [loading, setLoading] = useState(true);
 
   // Sync theme to document
@@ -266,6 +270,8 @@ export default function App() {
         toggleTheme={toggleTheme}
         notifications={notifications}
         markNotificationRead={handleMarkNotificationRead}
+        onOpenLLMConfig={() => setShowLLMModal(true)}
+        onOpenLandingIntro={() => setShowLandingIntro(true)}
       />
 
       {/* Main Content Area */}
@@ -363,6 +369,20 @@ export default function App() {
           onApply={handleApply}
           onStartInterview={handleStartInterview}
           hasApplied={hasAppliedToSelected}
+        />
+      )}
+
+      {/* Modular LLM Configuration Modal (Provider, URL, and long text box for all parameters) */}
+      {showLLMModal && (
+        <LLMConfigModal
+          onClose={() => setShowLLMModal(false)}
+        />
+      )}
+
+      {/* Global Sanskrit & Universal Words Welcoming Landing Screen */}
+      {showLandingIntro && (
+        <GlobalLandingIntro
+          onComplete={() => setShowLandingIntro(false)}
         />
       )}
 

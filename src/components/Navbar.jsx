@@ -14,7 +14,10 @@ import {
   CheckCircle,
   ExternalLink,
   DollarSign,
-  BarChart3
+  BarChart3,
+  Sliders,
+  Sparkles,
+  Globe
 } from 'lucide-react';
 
 export default function Navbar({
@@ -25,10 +28,24 @@ export default function Navbar({
   theme,
   toggleTheme,
   notifications = [],
-  markNotificationRead
+  markNotificationRead,
+  onOpenLLMConfig,
+  onOpenLandingIntro
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [localLlmActive, setLocalLlmActive] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/ai/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.llm?.running) {
+          setLocalLlmActive(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -84,8 +101,65 @@ export default function Navbar({
           })}
         </nav>
 
-        {/* Actions: Role Selector, Notifications, Theme, Profile */}
+        {/* Actions: Local LLM Status, Role Selector, Notifications, Theme, Profile */}
         <div className="nav-actions">
+          {/* LLM Engine Modular Config Pill & Trigger */}
+          <button
+            id="open-llm-config-btn"
+            onClick={onOpenLLMConfig}
+            className="badge badge-purple"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              cursor: 'pointer',
+              border: '1px solid rgba(168, 85, 247, 0.45)',
+              background: localLlmActive ? 'rgba(168, 85, 247, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+              padding: '0.35rem 0.75rem',
+              borderRadius: '9999px',
+              color: 'var(--text-primary)',
+              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+            title="Configure LLM Engine: Provider, Endpoint URL & Parameters"
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: localLlmActive ? '#34d399' : '#f59e0b',
+                boxShadow: localLlmActive ? '0 0 8px #34d399' : '0 0 6px #f59e0b'
+              }}
+            />
+            <Sliders size={13} style={{ color: 'var(--primary)' }} />
+            <span style={{ fontSize: '0.74rem', fontWeight: 700 }}>
+              {localLlmActive ? 'LLM: 0.6B Active' : 'LLM: Configure'}
+            </span>
+          </button>
+
+          {/* Sanskrit & Universal Origins Landing Replay Trigger */}
+          <button
+            id="open-origins-landing-btn"
+            onClick={onOpenLandingIntro}
+            className="badge"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              cursor: 'pointer',
+              border: '1px solid rgba(245, 158, 11, 0.4)',
+              background: 'rgba(245, 158, 11, 0.1)',
+              padding: '0.35rem 0.7rem',
+              borderRadius: '9999px',
+              color: '#fbbf24',
+              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+            title="Experience Sanskrit Pratibhā and Universal Cultural Origins Animation"
+          >
+            <Sparkles size={12} />
+            <span style={{ fontSize: '0.74rem', fontWeight: 700 }}>प्रतिभा Origins</span>
+          </button>
+
           {/* Role Switcher Pill */}
           <div className="role-badge" title="Switch between Job Seeker and Hiring Manager perspective">
             <button

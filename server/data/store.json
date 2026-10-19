@@ -758,5 +758,12 @@
         }
       ]
     }
-  ]
+  ],
+  "llmConfig": {
+    "provider": "llama.cpp",
+    "endpointUrl": "http://127.0.0.1:8080",
+    "modelName": "Qwen3-0.6B-Q4_K_M-Instruct.gguf",
+    "enabled": true,
+    "parameters": "{\n  \"temperature\": 0.3,\n  \"max_tokens\": 250,\n  \"top_p\": 0.95,\n  \"timeout_ms\": 12000,\n  \"system_prompt\": \"You are Pratibha AI career intelligence engine. Provide direct, concise and actionable guidance.\",\n  \"custom_headers\": {\n    \"Content-Type\": \"application/json\"\n  }\n}"
+  }
 }
