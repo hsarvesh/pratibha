@@ -15,6 +15,7 @@ import {
   Building2,
   Eye
 } from 'lucide-react';
+import SocialBadgesRow from './SocialBadgesRow';
 
 export default function CandidateATSPreviewModal({ isOpen, onClose, candidate }) {
   if (!isOpen || !candidate) return null;
@@ -174,6 +175,26 @@ export default function CandidateATSPreviewModal({ isOpen, onClose, candidate })
               </strong>
             </div>
           </div>
+
+          {/* Verified Social & Digital Presence */}
+          {(candidate.socialLinks || candidate.social_links) && (
+            <div
+              style={{
+                marginTop: '0.85rem',
+                paddingTop: '0.75rem',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.65rem',
+                flexWrap: 'wrap'
+              }}
+            >
+              <span style={{ fontSize: '0.76rem', color: '#94a3b8', fontWeight: 600 }}>
+                Verified Channels:
+              </span>
+              <SocialBadgesRow socialLinks={candidate.socialLinks || candidate.social_links} size="sm" />
+            </div>
+          )}
         </div>
 
         {/* Bio / Summary */}

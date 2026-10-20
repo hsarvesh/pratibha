@@ -24,9 +24,12 @@ import {
   Code2,
   FolderGit2
 } from 'lucide-react';
+import LinkedInIcon from './LinkedInIcon';
+import SocialBadgesRow from './SocialBadgesRow';
+import SocialLinksEditor from './SocialLinksEditor';
 import CandidateATSPreviewModal from './CandidateATSPreviewModal';
 
-export default function UserProfile({ currentUser, onUpdateProfile, onAddSkill }) {
+export default function UserProfile({ currentUser, onUpdateProfile, onAddSkill, onOpenLinkedInModal }) {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'skills' | 'experience' | 'projects' | 'privacy'
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [saveToast, setSaveToast] = useState('');
@@ -58,6 +61,7 @@ export default function UserProfile({ currentUser, onUpdateProfile, onAddSkill }
         link: 'https://github.com/example/stream-engine'
       }
     ],
+    socialLinks: currentUser.socialLinks || currentUser.social_links || {},
     privacySettings: currentUser.privacySettings || {
       visibleToEmployers: true,
       showContactNumber: true,
@@ -84,6 +88,14 @@ export default function UserProfile({ currentUser, onUpdateProfile, onAddSkill }
     if (e) e.preventDefault();
     await onUpdateProfile(currentUser.id, profileData);
     setSaveToast('Profile successfully saved & updated in PostgreSQL!');
+    setTimeout(() => setSaveToast(''), 3500);
+  };
+
+  const handleSaveSocialLinks = async (updatedLinks) => {
+    const updatedData = { ...profileData, socialLinks: updatedLinks };
+    setProfileData(updatedData);
+    await onUpdateProfile(currentUser.id, updatedData);
+    setSaveToast('Social & Web networking profiles updated & linked successfully! 🚀');
     setTimeout(() => setSaveToast(''), 3500);
   };
 
@@ -234,11 +246,38 @@ export default function UserProfile({ currentUser, onUpdateProfile, onAddSkill }
                   </>
                 )}
               </div>
+
+              {/* Connected Social Badges */}
+              <div style={{ marginTop: '0.65rem' }}>
+                <SocialBadgesRow
+                  socialLinks={profileData.socialLinks}
+                  size="sm"
+                  onEmptyClick={() => setActiveTab('social')}
+                  emptyPrompt="+ Connect GitHub, Twitter, Instagram & Social Profiles"
+                />
+              </div>
             </div>
           </div>
 
           {/* Top Actions */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={onOpenLinkedInModal}
+              className="btn btn-sm"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                background: '#0a66c2',
+                color: 'white',
+                border: 'none',
+                fontWeight: 700,
+                boxShadow: '0 2px 8px rgba(10, 102, 194, 0.4)'
+              }}
+            >
+              <LinkedInIcon size={15} /> Import from LinkedIn
+            </button>
             <button
               type="button"
               onClick={() => setShowPreviewModal(true)}
@@ -279,11 +318,12 @@ export default function UserProfile({ currentUser, onUpdateProfile, onAddSkill }
       >
         {[
           { id: 'overview', label: '1. Personal & Contact', icon: User },
-          { id: 'preferences', label: '2. Career & Compensation', icon: DollarSign },
-          { id: 'skills', label: '3. Verified Skills', icon: Award },
-          { id: 'experience', label: '4. Work & Education', icon: Briefcase },
-          { id: 'projects', label: '5. Featured Projects', icon: FolderGit2 },
-          { id: 'privacy', label: '6. Privacy & Trust', icon: Shield }
+          { id: 'social', label: '2. Social & Web Profiles', icon: Globe },
+          { id: 'preferences', label: '3. Career & Compensation', icon: DollarSign },
+          { id: 'skills', label: '4. Verified Skills', icon: Award },
+          { id: 'experience', label: '5. Work & Education', icon: Briefcase },
+          { id: 'projects', label: '6. Featured Projects', icon: FolderGit2 },
+          { id: 'privacy', label: '7. Privacy & Trust', icon: Shield }
         ].map(t => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;
@@ -315,6 +355,80 @@ export default function UserProfile({ currentUser, onUpdateProfile, onAddSkill }
       {/* TAB 1: PERSONAL & CONTACT */}
       {activeTab === 'overview' && (
         <div className="glass-panel" style={{ padding: '2rem' }}>
+          {/* LinkedIn Quick Sync Banner */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.85rem 1rem',
+              background: 'rgba(10, 102, 194, 0.08)',
+              border: '1px solid rgba(10, 102, 194, 0.25)',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '1.5rem',
+              flexWrap: 'wrap',
+              gap: '0.75rem'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <LinkedInIcon size={22} color="#0a66c2" />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                  Sync Profile with LinkedIn
+                </div>
+                <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                  Import your professional summary, verified skills, and past positions directly from your public LinkedIn profile or PDF.
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenLinkedInModal}
+              className="btn btn-sm"
+              style={{ background: '#0a66c2', color: 'white', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              <Sparkles size={13} /> Import LinkedIn
+            </button>
+          </div>
+
+          {/* Quick Social & Web Profiles Card */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.85rem 1rem',
+              background: 'rgba(99, 102, 241, 0.08)',
+              border: '1px solid rgba(99, 102, 241, 0.25)',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '1.5rem',
+              flexWrap: 'wrap',
+              gap: '0.75rem'
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <Globe size={16} color="var(--primary)" /> Linked Social & Web Profiles
+              </div>
+              <div style={{ marginTop: '0.4rem' }}>
+                <SocialBadgesRow
+                  socialLinks={profileData.socialLinks}
+                  size="sm"
+                  onEmptyClick={() => setActiveTab('social')}
+                  emptyPrompt="+ Connect GitHub, Facebook, Instagram, Twitter/X & Portfolio"
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('social')}
+              className="btn btn-sm btn-secondary"
+              style={{ fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              Manage Social Profiles →
+            </button>
+          </div>
+
           <div style={{ marginBottom: '1.5rem' }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
               Personal Identity & Contact Channels
@@ -428,7 +542,16 @@ export default function UserProfile({ currentUser, onUpdateProfile, onAddSkill }
         </div>
       )}
 
-      {/* TAB 2: CAREER PREFERENCES & COMPENSATION */}
+      {/* TAB 2: SOCIAL & WEB NETWORKING PROFILES */}
+      {activeTab === 'social' && (
+        <SocialLinksEditor
+          socialLinks={profileData.socialLinks || {}}
+          onChange={(newLinks) => setProfileData({ ...profileData, socialLinks: newLinks })}
+          onSave={handleSaveSocialLinks}
+        />
+      )}
+
+      {/* TAB 3: CAREER PREFERENCES & COMPENSATION */}
       {activeTab === 'preferences' && (
         <div className="glass-panel" style={{ padding: '2rem' }}>
           <div style={{ marginBottom: '1.5rem' }}>

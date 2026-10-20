@@ -17,6 +17,7 @@ import {
   DollarSign,
   ChevronDown
 } from 'lucide-react';
+import SocialBadgesRow from './SocialBadgesRow';
 
 export default function HiringManagerATS({
   currentUser,
@@ -276,6 +277,13 @@ export default function HiringManagerATS({
                           {app.employerFeedback && (
                             <div style={{ fontSize: '0.75rem', color: '#34d399', background: 'rgba(16, 185, 129, 0.1)', padding: '0.35rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
                               ✓ Feedback Submitted (Rating: {app.employerFeedback.technicalScore}/10)
+                            </div>
+                          )}
+
+                          {/* Candidate Linked Social Profiles */}
+                          {(app.candidate?.socialLinks || app.candidate?.social_links) && (
+                            <div style={{ marginTop: '0.45rem', marginBottom: '0.2rem' }}>
+                              <SocialBadgesRow socialLinks={app.candidate.socialLinks || app.candidate.social_links} size="sm" />
                             </div>
                           )}
 

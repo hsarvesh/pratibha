@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS users (
     certifications JSONB DEFAULT '[]'::jsonb,
     projects JSONB DEFAULT '[]'::jsonb,
     privacy_settings JSONB DEFAULT '{"visibleToEmployers": true, "showContactNumber": true, "showTargetSalary": true}'::jsonb,
+    social_links JSONB DEFAULT '{}'::jsonb,
     resume_details JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP

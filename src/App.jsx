@@ -15,6 +15,7 @@ import LLMConfigModal from './components/LLMConfigModal';
 import GlobalLandingIntro from './components/GlobalLandingIntro';
 import AuthModal from './components/AuthModal';
 import CandidateATSPreviewModal from './components/CandidateATSPreviewModal';
+import LinkedInImportModal from './components/LinkedInImportModal';
 
 export default function App() {
   const [portalMode, setPortalMode] = useState('candidate'); // 'candidate' | 'employer'
@@ -33,6 +34,7 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalTab, setAuthModalTab] = useState('register');
   const [showATSPreview, setShowATSPreview] = useState(false);
+  const [showLinkedInModal, setShowLinkedInModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Sync theme to document
@@ -323,6 +325,7 @@ export default function App() {
                 onSelectJob={(job) => setSelectedJobForModal(job)}
                 onStartInterview={handleStartInterview}
                 onOpenProfilePreview={() => setShowATSPreview(true)}
+                onOpenLinkedInModal={() => setShowLinkedInModal(true)}
               />
             )}
 
@@ -342,6 +345,7 @@ export default function App() {
                 currentUser={currentUser}
                 onUpdateProfile={handleUpdateProfile}
                 onAddSkill={handleAddSkill}
+                onOpenLinkedInModal={() => setShowLinkedInModal(true)}
               />
             )}
 
@@ -447,6 +451,18 @@ export default function App() {
         isOpen={showATSPreview}
         onClose={() => setShowATSPreview(false)}
         candidate={currentUser}
+      />
+
+      {/* LinkedIn Profile Import & Sync Modal */}
+      <LinkedInImportModal
+        isOpen={showLinkedInModal}
+        onClose={() => setShowLinkedInModal(false)}
+        currentUser={currentUser}
+        onImportSuccess={(updatedUser) => {
+          setCurrentUser(updatedUser);
+          loadJobs(updatedUser.id);
+          loadNotifications(updatedUser.id);
+        }}
       />
 
       {/* Modular LLM Configuration Modal */}

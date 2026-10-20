@@ -21,6 +21,8 @@ import {
   Lock,
   ChevronRight
 } from 'lucide-react';
+import LinkedInIcon from './LinkedInIcon';
+import SocialBadgesRow from './SocialBadgesRow';
 
 export default function CandidateHome({
   currentUser,
@@ -29,7 +31,8 @@ export default function CandidateHome({
   onNavigate,
   onSelectJob,
   onStartInterview,
-  onOpenProfilePreview
+  onOpenProfilePreview,
+  onOpenLinkedInModal
 }) {
   // Calculate Profile Completeness dynamically
   const calculateCompleteness = () => {
@@ -82,6 +85,21 @@ export default function CandidateHome({
       score += 15;
     } else {
       missing.push({ id: 'salary', label: 'Specify target compensation & work conditions', weight: 15, tab: 'profile' });
+    }
+
+    // Social Profiles (GitHub, Twitter, Instagram, Facebook, Portfolio) (10%)
+    const social = currentUser.socialLinks || currentUser.social_links || {};
+    const custom = Array.isArray(social.customLinks) ? social.customLinks : [];
+    const activeSocialCount = Object.entries(social).filter(([k, v]) => k !== 'customLinks' && typeof v === 'string' && v.trim().length > 0).length +
+      custom.filter(c => c && c.url && c.url.trim().length > 0).length;
+
+    if (activeSocialCount >= 2) {
+      score += 10;
+    } else if (activeSocialCount === 1) {
+      score += 5;
+      missing.push({ id: 'social', label: 'Connect a second social profile (GitHub, Twitter, Instagram, Facebook, Portfolio)', weight: 5, tab: 'profile' });
+    } else {
+      missing.push({ id: 'social', label: 'Link GitHub, Facebook, Instagram, Twitter/X or Portfolio', weight: 10, tab: 'profile' });
     }
 
     return { score: Math.min(score, 100), missing };
@@ -192,11 +210,38 @@ export default function CandidateHome({
                   </>
                 )}
               </div>
+
+              {/* Connected Social Profiles */}
+              <div style={{ marginTop: '0.85rem' }}>
+                <SocialBadgesRow
+                  socialLinks={currentUser.socialLinks || currentUser.social_links}
+                  size="sm"
+                  onEmptyClick={() => onNavigate('profile')}
+                  emptyPrompt="+ Link GitHub, Twitter, Instagram, Facebook & Portfolio"
+                />
+              </div>
             </div>
           </div>
 
           {/* Quick Action Preview ATS button */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <button
+              onClick={onOpenLinkedInModal}
+              className="btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.75rem 1.25rem',
+                fontSize: '0.92rem',
+                fontWeight: 700,
+                background: '#0a66c2',
+                color: 'white',
+                boxShadow: '0 4px 14px rgba(10, 102, 194, 0.4)'
+              }}
+            >
+              <LinkedInIcon size={16} /> Import from LinkedIn
+            </button>
             <button
               onClick={onOpenProfilePreview}
               className="btn btn-primary"
@@ -204,12 +249,12 @@ export default function CandidateHome({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                padding: '0.75rem 1.25rem',
-                fontSize: '0.92rem',
+                padding: '0.65rem 1.25rem',
+                fontSize: '0.88rem',
                 fontWeight: 700
               }}
             >
-              <Eye size={16} /> Preview How Employers See Me
+              <Eye size={15} /> Preview How Employers See Me
             </button>
             <button
               onClick={() => onNavigate('profile')}
@@ -217,7 +262,7 @@ export default function CandidateHome({
               style={{
                 background: 'var(--bg-secondary)',
                 border: '1px solid var(--border-color)',
-                fontSize: '0.84rem'
+                fontSize: '0.82rem'
               }}
             >
               Update Full Profile & Privacy
@@ -281,6 +326,40 @@ export default function CandidateHome({
         </div>
 
         {/* Actionable Next Steps Checklist */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.85rem 1.15rem',
+            background: 'rgba(10, 102, 194, 0.12)',
+            border: '1px solid rgba(10, 102, 194, 0.3)',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '1.25rem',
+            flexWrap: 'wrap',
+            gap: '0.75rem'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <LinkedInIcon size={22} color="#0a66c2" />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                Have a LinkedIn profile? Import everything in seconds
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                Automatically sync your verified work history, skills matrix, and bio to boost your profile strength.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onOpenLinkedInModal}
+            className="btn btn-sm"
+            style={{ background: '#0a66c2', color: 'white', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            <Sparkles size={13} /> 1-Click Import
+          </button>
+        </div>
+
         {checklistItems.length > 0 ? (
           <div>
             <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>

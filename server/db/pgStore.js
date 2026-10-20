@@ -27,6 +27,7 @@ export function formatUserRow(row) {
     certifications: row.certifications || [],
     projects: row.projects || [],
     privacySettings: row.privacy_settings || { visibleToEmployers: true, showContactNumber: true, showTargetSalary: true },
+    socialLinks: row.social_links || row.resume_details?.socialLinks || {},
     resumeDetails: row.resume_details || {},
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -168,6 +169,7 @@ export async function createUser(userData) {
   const certifications = userData.certifications || [];
   const projects = userData.projects || [];
   const privacySettings = userData.privacySettings || { visibleToEmployers: true, showContactNumber: Boolean(phone), showTargetSalary: true };
+  const socialLinks = userData.socialLinks || userData.social_links || {};
   const resumeDetails = userData.resumeDetails || {};
 
   const res = await query(`
@@ -175,12 +177,12 @@ export async function createUser(userData) {
       id, role, name, email, phone, password, headline, location, preferred_remote,
       years_of_experience, "current_role", bio, avatar_url, target_salary,
       career_goals, subscription_tier, company, company_details, skills,
-      experience, education, certifications, projects, privacy_settings, resume_details
+      experience, education, certifications, projects, privacy_settings, social_links, resume_details
     ) VALUES (
       $1, $2, $3, $4, $5, $6, $7, $8, $9,
       $10, $11, $12, $13, $14,
       $15, $16, $17, $18, $19,
-      $20, $21, $22, $23, $24, $25
+      $20, $21, $22, $23, $24, $25, $26
     )
     RETURNING *;
   `, [
@@ -188,7 +190,7 @@ export async function createUser(userData) {
     yearsOfExperience, currentRole, bio, avatarUrl, targetSalary,
     careerGoals, subscriptionTier, company, JSON.stringify(companyDetails), JSON.stringify(skills),
     JSON.stringify(experience), JSON.stringify(education), JSON.stringify(certifications),
-    JSON.stringify(projects), JSON.stringify(privacySettings), JSON.stringify(resumeDetails)
+    JSON.stringify(projects), JSON.stringify(privacySettings), JSON.stringify(socialLinks), JSON.stringify(resumeDetails)
   ]);
 
   return formatUserRow(res.rows[0]);
@@ -199,6 +201,7 @@ export async function updateUser(id, updates = {}) {
   if (!user) return null;
 
   const merged = { ...user, ...updates };
+  const socialLinks = merged.socialLinks || merged.social_links || {};
 
   const res = await query(`
     UPDATE users SET
@@ -223,9 +226,10 @@ export async function updateUser(id, updates = {}) {
       certifications = $19,
       projects = $20,
       privacy_settings = $21,
-      resume_details = $22,
+      social_links = $22,
+      resume_details = $23,
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $23
+    WHERE id = $24
     RETURNING *;
   `, [
     merged.name,
@@ -249,6 +253,7 @@ export async function updateUser(id, updates = {}) {
     JSON.stringify(merged.certifications || []),
     JSON.stringify(merged.projects || []),
     JSON.stringify(merged.privacySettings || {}),
+    JSON.stringify(socialLinks),
     JSON.stringify(merged.resumeDetails || {}),
     id
   ]);
@@ -442,13 +447,14 @@ export async function markNotificationRead(id) {
 }
 
 export async function createNotification(notifData) {
+  const notifId = notifData.id || `notif_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
   const res = await query(`
     INSERT INTO notifications (
       id, user_id, title, message, type, timestamp, read, action_url
     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING *;
   `, [
-    notifData.id,
+    notifId,
     notifData.userId,
     notifData.title,
     notifData.message,

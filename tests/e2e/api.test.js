@@ -11,6 +11,7 @@ import {
   evaluateInterviewResponse,
   optimizeResumeBullet,
   generateCareerPathing,
+  parseLinkedInProfile,
   DEFAULT_LLM_CONFIG
 } from '../../server/services/aiEngine.js';
 
@@ -191,6 +192,39 @@ test('Pratibha HTTP API End-to-End Test Suite', async (t) => {
         const skills = await db.addOrEndorseSkill(req.params.id, { name, level, verified });
         if (!skills) return res.status(404).json({ success: false, message: 'User not found' });
         res.json({ success: true, skills });
+      } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+      }
+    });
+
+    app.post('/api/linkedin/parse', async (req, res) => {
+      try {
+        const { url, rawText, manualData } = req.body;
+        const profile = await parseLinkedInProfile({ url, rawText, manualData });
+        res.json({ success: true, profile });
+      } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+      }
+    });
+
+    app.post('/api/users/:id/import-linkedin', async (req, res) => {
+      try {
+        const { url, rawText, parsedData } = req.body;
+        const user = await db.getUserById(req.params.id);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+        const imported = parsedData || (await parseLinkedInProfile({ url, rawText, currentProfile: user }));
+        const updates = {
+          name: imported.name || user.name,
+          headline: imported.headline || user.headline,
+          location: imported.location || user.location,
+          bio: imported.bio || user.bio,
+          skills: (imported.skills && imported.skills.length > 0) ? imported.skills : user.skills,
+          experience: (imported.experience && imported.experience.length > 0) ? imported.experience : user.experience,
+          education: (imported.education && imported.education.length > 0) ? imported.education : user.education,
+          projects: (imported.projects && imported.projects.length > 0) ? imported.projects : user.projects
+        };
+        const updated = await db.updateUser(req.params.id, updates);
+        res.json({ success: true, user: updated, importedData: imported });
       } catch (err) {
         res.status(500).json({ success: false, message: err.message });
       }
@@ -596,6 +630,85 @@ test('Pratibha HTTP API End-to-End Test Suite', async (t) => {
 
     // Clean up created test user from database
     await query('DELETE FROM users WHERE email = $1', [testEmail]);
+  });
+
+  await t.test('5c. LinkedIn Profile Parse & Candidate Import Flow', async () => {
+    // 1. Test LinkedIn Profile Parse Preview
+    const parseRes = await fetch(`${baseUrl}/api/linkedin/parse`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: 'https://www.linkedin.com/in/aarav-sharma'
+      })
+    });
+    assert.equal(parseRes.status, 200);
+    const parseData = await parseRes.json();
+    assert.equal(parseData.success, true);
+    assert.equal(parseData.profile.name, 'Aarav Sharma');
+    assert.ok(Array.isArray(parseData.profile.skills));
+    assert.ok(parseData.profile.skills.length >= 5);
+    assert.ok(Array.isArray(parseData.profile.experience));
+
+    // 2. Test Import LinkedIn Profile into User Record
+    const importRes = await fetch(`${baseUrl}/api/users/candidate_1/import-linkedin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: 'https://www.linkedin.com/in/aarav-sharma',
+        parsedData: parseData.profile
+      })
+    });
+    assert.equal(importRes.status, 200);
+    const importData = await importRes.json();
+    assert.equal(importData.success, true);
+    assert.equal(importData.user.name, 'Aarav Sharma');
+    assert.ok(importData.user.skills.length >= 5);
+    assert.ok(importData.user.experience.length >= 1);
+  });
+
+  await t.test('5d. Candidate Social Networking Profiles Storage & Linking Flow', async () => {
+    const testSocialData = {
+      github: 'https://github.com/aaravsharma-dev',
+      linkedin: 'https://linkedin.com/in/aarav-sharma',
+      twitter: 'https://twitter.com/aarav_codes',
+      instagram: 'https://instagram.com/aarav.designs',
+      facebook: 'https://facebook.com/aarav.sharma.tech',
+      portfolio: 'https://aaravsharma.dev',
+      youtube: 'https://youtube.com/@aaravcodes',
+      blog: 'https://medium.com/@aaravsharma',
+      customLinks: [
+        { id: 'c_1', label: 'LeetCode', url: 'https://leetcode.com/u/aarav_s' },
+        { id: 'c_2', label: 'Dribbble', url: 'https://dribbble.com/aarav' }
+      ]
+    };
+
+    // 1. Update candidate profile with full social networking links
+    const updateRes = await fetch(`${baseUrl}/api/users/candidate_1`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        socialLinks: testSocialData
+      })
+    });
+    assert.equal(updateRes.status, 200);
+    const updateBody = await updateRes.json();
+    assert.equal(updateBody.success, true);
+    assert.ok(updateBody.user.socialLinks);
+    assert.equal(updateBody.user.socialLinks.github, testSocialData.github);
+    assert.equal(updateBody.user.socialLinks.twitter, testSocialData.twitter);
+    assert.equal(updateBody.user.socialLinks.instagram, testSocialData.instagram);
+    assert.equal(updateBody.user.socialLinks.facebook, testSocialData.facebook);
+    assert.equal(updateBody.user.socialLinks.portfolio, testSocialData.portfolio);
+    assert.equal(updateBody.user.socialLinks.customLinks.length, 2);
+
+    // 2. Fetch directly from DB via GET endpoint to ensure persistence in PostgreSQL
+    const fetchRes = await fetch(`${baseUrl}/api/users/candidate_1`);
+    assert.equal(fetchRes.status, 200);
+    const fetchBody = await fetchRes.json();
+    assert.equal(fetchBody.user.socialLinks.github, 'https://github.com/aaravsharma-dev');
+    assert.equal(fetchBody.user.socialLinks.instagram, 'https://instagram.com/aarav.designs');
+    assert.equal(fetchBody.user.socialLinks.facebook, 'https://facebook.com/aarav.sharma.tech');
+    assert.equal(fetchBody.user.socialLinks.customLinks[0].label, 'LeetCode');
   });
 
   await t.test('6. Applications & ATS Endpoints Flow', async () => {

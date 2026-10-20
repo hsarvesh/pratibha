@@ -66,6 +66,8 @@ export async function initializeDatabase() {
   try {
     console.log('[Init DB] Applying schema.sql...');
     await client.query(sql);
+    // Ensure incremental migration columns exist
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}'::jsonb;`);
     console.log('[Init DB] Schema successfully applied!');
 
     // Verify created tables

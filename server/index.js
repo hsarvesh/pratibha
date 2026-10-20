@@ -8,6 +8,7 @@ import {
   evaluateInterviewResponse,
   optimizeResumeBullet,
   generateCareerPathing,
+  parseLinkedInProfile,
   DEFAULT_LLM_CONFIG,
   getActiveLLMConfig,
   testLLMConnection
@@ -346,6 +347,85 @@ app.post('/api/users/:id/skills', async (req, res) => {
     res.json({ success: true, skills });
   } catch (err) {
     console.error('Error adding skill:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Parse LinkedIn profile (preview before saving)
+app.post('/api/linkedin/parse', async (req, res) => {
+  try {
+    const { url, rawText, manualData, userId } = req.body;
+    let currentUser = {};
+    if (userId) {
+      currentUser = (await db.getUserById(userId)) || {};
+    }
+    const parsed = await parseLinkedInProfile({ url, rawText, manualData, currentProfile: currentUser });
+    res.json({ success: true, profile: parsed });
+  } catch (err) {
+    console.error('Error parsing LinkedIn profile:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Import LinkedIn profile directly into Candidate user record
+app.post('/api/users/:id/import-linkedin', async (req, res) => {
+  try {
+    const { url, rawText, parsedData } = req.body;
+    const user = await db.getUserById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    let imported = parsedData;
+    if (!imported) {
+      imported = await parseLinkedInProfile({ url, rawText, currentProfile: user });
+    }
+
+    // Merge strategy: enrich user profile with verified LinkedIn data
+    const updates = {
+      name: imported.name || user.name,
+      headline: imported.headline || user.headline,
+      location: imported.location || user.location,
+      bio: imported.bio || user.bio,
+      skills: (imported.skills && imported.skills.length > 0) ? imported.skills : user.skills,
+      experience: (imported.experience && imported.experience.length > 0) ? imported.experience : user.experience,
+      education: (imported.education && imported.education.length > 0) ? imported.education : user.education,
+      projects: (imported.projects && imported.projects.length > 0) ? imported.projects : user.projects,
+      socialLinks: {
+        ...(user.socialLinks || {}),
+        linkedin: imported.linkedinUrl || url || user.socialLinks?.linkedin || ''
+      },
+      resumeDetails: {
+        ...(user.resumeDetails || {}),
+        linkedinSynced: true,
+        linkedinUrl: imported.linkedinUrl || url,
+        lastSyncedAt: new Date().toISOString()
+      }
+    };
+
+    const updated = await db.updateUser(req.params.id, updates);
+
+    // Create a real-time notification
+    try {
+      await db.createNotification({
+        userId: user.id,
+        title: 'LinkedIn Profile Successfully Synced! 🚀',
+        message: `Imported ${updates.skills.length} skills and ${updates.experience.length} career positions from LinkedIn.`,
+        type: 'profile_sync',
+        actionUrl: '/profile'
+      });
+    } catch (notifErr) {
+      console.warn('Sync notification warning:', notifErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'LinkedIn profile imported successfully!',
+      user: updated,
+      importedData: imported
+    });
+  } catch (err) {
+    console.error('Error importing LinkedIn profile:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
