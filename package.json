@@ -9,12 +9,18 @@
     "dev:client": "vite --port 3000 --host",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "db:init": "node server/db/initDb.js",
+    "db:migrate": "node server/db/migrateData.js",
+    "db:test": "node server/test-db.js",
+    "test": "node tests/runner.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^18.0.8",
     "express": "^4.21.2",
     "lucide-react": "^1.16.0",
+    "pg": "^8.23.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

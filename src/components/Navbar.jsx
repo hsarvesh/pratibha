@@ -17,12 +17,18 @@ import {
   BarChart3,
   Sliders,
   Sparkles,
-  Globe
+  Globe,
+  Home,
+  UserPlus,
+  LogIn,
+  ChevronDown
 } from 'lucide-react';
 
 export default function Navbar({
   currentView,
   setCurrentView,
+  portalMode = 'candidate', // 'candidate' | 'employer'
+  setPortalMode,
   currentUser,
   switchUserRole,
   theme,
@@ -30,10 +36,12 @@ export default function Navbar({
   notifications = [],
   markNotificationRead,
   onOpenLLMConfig,
-  onOpenLandingIntro
+  onOpenLandingIntro,
+  onOpenAuthModal
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [localLlmActive, setLocalLlmActive] = useState(false);
 
   useEffect(() => {
@@ -49,43 +57,116 @@ export default function Navbar({
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const navItems = [
+  // Distinct navigation sets for Candidate Portal vs Employer Portal
+  const candidateNavItems = [
+    { id: 'candidate-home', label: 'My Cockpit', icon: Home },
     { id: 'jobs', label: 'Explore Jobs', icon: Briefcase },
-    { id: 'applications', label: currentUser.role === 'candidate' ? 'My Applications' : 'ATS Pipeline', icon: currentUser.role === 'candidate' ? FileText : Building2 },
-    { id: 'interview-coach', label: 'AI Interview Coach', icon: Brain },
+    { id: 'profile', label: 'My Profile', icon: User },
+    { id: 'applications', label: 'My Applications', icon: FileText },
+    { id: 'interview-coach', label: 'AI Mock Interview', icon: Brain },
     { id: 'resume-studio', label: 'Resume Studio', icon: FileText },
-    { id: 'career-guidance', label: 'Career Pathing', icon: Compass },
-    { id: 'hiring-hub', label: 'Post a Job', icon: Building2 },
-    { id: 'pricing', label: 'Plans & Pricing', icon: DollarSign },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'career-guidance', label: 'Career Guidance', icon: Compass }
   ];
+
+  const employerNavItems = [
+    { id: 'applications', label: 'ATS Pipeline', icon: Building2 },
+    { id: 'hiring-hub', label: 'Post & Audit JD', icon: Briefcase },
+    { id: 'analytics', label: 'Talent Analytics', icon: BarChart3 },
+    { id: 'pricing', label: 'Plans & Pricing', icon: DollarSign }
+  ];
+
+  const currentNavItems = portalMode === 'candidate' ? candidateNavItems : employerNavItems;
+
+  const handlePortalSwitch = (newMode) => {
+    setPortalMode(newMode);
+    if (newMode === 'employer') {
+      if (currentUser.role !== 'employer') {
+        switchUserRole('employer_1');
+      } else {
+        setCurrentView('applications');
+      }
+    } else {
+      if (currentUser.role !== 'candidate') {
+        switchUserRole('candidate_1');
+      } else {
+        setCurrentView('candidate-home');
+      }
+    }
+  };
 
   return (
     <header className="navbar">
       <div className="navbar-inner">
-        {/* Brand Logo */}
-        <div
-          className="brand-logo"
-          style={{ cursor: 'pointer' }}
-          onClick={() => {
-            setCurrentView('jobs');
-            setMobileMenuOpen(false);
-          }}
-        >
-          <div className="brand-icon-wrapper">
-            <Brain size={22} />
+        {/* Brand Logo & Portal Switcher Container */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+          <div
+            className="brand-logo"
+            style={{ cursor: 'pointer' }}
+            onClick={() => {
+              setCurrentView(portalMode === 'candidate' ? 'candidate-home' : 'applications');
+              setMobileMenuOpen(false);
+            }}
+          >
+            <div className="brand-icon-wrapper">
+              <Brain size={22} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ lineHeight: 1.1 }}>Pratibha</span>
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, color: portalMode === 'candidate' ? 'var(--primary)' : '#10b981', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                {portalMode === 'candidate' ? 'Talent Intelligence' : 'Employer ATS'}
+              </span>
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ lineHeight: 1.1 }}>Pratibha</span>
-            <span style={{ fontSize: '0.62rem', fontWeight: 600, color: 'var(--primary)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Career Intelligence
-            </span>
+
+          {/* TWO DISTINCT SECTIONS SWITCHER (Requested by User) */}
+          <div
+            className="role-badge"
+            style={{
+              padding: '0.2rem',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '9999px',
+              display: 'flex'
+            }}
+          >
+            <button
+              id="candidate-portal-btn"
+              onClick={() => handlePortalSwitch('candidate')}
+              className={`role-pill-btn ${portalMode === 'candidate' ? 'active' : ''}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.82rem',
+                fontWeight: 700
+              }}
+            >
+              <User size={14} />
+              <span>Candidate Portal</span>
+            </button>
+            <button
+              id="employer-portal-btn"
+              onClick={() => handlePortalSwitch('employer')}
+              className={`role-pill-btn ${portalMode === 'employer' ? 'active' : ''}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.82rem',
+                fontWeight: 700
+              }}
+            >
+              <Building2 size={14} />
+              <span>Employer Portal</span>
+            </button>
           </div>
         </div>
 
-        {/* Desktop Navigation */}
+        {/* Desktop Navigation for Current Portal */}
         <nav className="nav-links-desktop">
-          {navItems.map(item => {
+          {currentNavItems.map(item => {
             const Icon = item.icon;
             const isActive = currentView === item.id;
             return (
@@ -101,9 +182,9 @@ export default function Navbar({
           })}
         </nav>
 
-        {/* Actions: Local LLM Status, Role Selector, Notifications, Theme, Profile */}
+        {/* Actions Area */}
         <div className="nav-actions">
-          {/* LLM Engine Modular Config Pill & Trigger */}
+          {/* LLM Engine Modular Config Pill */}
           <button
             id="open-llm-config-btn"
             onClick={onOpenLLMConfig}
@@ -160,22 +241,6 @@ export default function Navbar({
             <span style={{ fontSize: '0.74rem', fontWeight: 700 }}>प्रतिभा Origins</span>
           </button>
 
-          {/* Role Switcher Pill */}
-          <div className="role-badge" title="Switch between Job Seeker and Hiring Manager perspective">
-            <button
-              className={`role-pill-btn ${currentUser.role === 'candidate' ? 'active' : ''}`}
-              onClick={() => switchUserRole('candidate_1')}
-            >
-              Job Seeker
-            </button>
-            <button
-              className={`role-pill-btn ${currentUser.role === 'employer' ? 'active' : ''}`}
-              onClick={() => switchUserRole('employer_1')}
-            >
-              Employer
-            </button>
-          </div>
-
           {/* Notifications Popover */}
           <div style={{ position: 'relative' }}>
             <button
@@ -206,9 +271,9 @@ export default function Navbar({
                         className={`notif-item ${!n.read ? 'unread' : ''}`}
                         onClick={() => {
                           markNotificationRead(n.id);
-                          if (n.actionUrl === '/applications') setCurrentView('applications');
+                          if (n.actionUrl === '/profile') setCurrentView('profile');
+                          else if (n.actionUrl === '/applications') setCurrentView('applications');
                           else if (n.actionUrl === '/jobs') setCurrentView('jobs');
-                          else if (n.actionUrl === '/ats') setCurrentView('applications');
                           setNotifOpen(false);
                         }}
                       >
@@ -239,19 +304,97 @@ export default function Navbar({
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
-          {/* User Profile Quick Access */}
-          <button
-            className="icon-btn"
-            onClick={() => setCurrentView('profile')}
-            title={`View Profile: ${currentUser.name}`}
-            style={{ overflow: 'hidden', padding: 0 }}
-          >
-            {currentUser.avatarUrl ? (
-              <img src={currentUser.avatarUrl} alt={currentUser.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <User size={18} />
+          {/* User Account / Auth Trigger */}
+          <div style={{ position: 'relative' }}>
+            <button
+              id="user-account-menu-btn"
+              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+              className="btn btn-sm"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                padding: '0.35rem 0.65rem',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '9999px'
+              }}
+              title={`Logged in as ${currentUser.name}`}
+            >
+              <img
+                src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=50&auto=format&fit=crop&q=80'}
+                alt={currentUser.name}
+                style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }}
+              />
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, maxWidth: 110, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {currentUser.name.split(' ')[0]}
+              </span>
+              <ChevronDown size={14} style={{ color: 'var(--text-muted)' }} />
+            </button>
+
+            {userDropdownOpen && (
+              <div
+                className="glass-panel animate-fade-in"
+                style={{
+                  position: 'absolute',
+                  top: '115%',
+                  right: 0,
+                  width: 240,
+                  padding: '0.75rem',
+                  borderRadius: 'var(--radius-md)',
+                  boxShadow: '0 15px 35px rgba(0, 0, 0, 0.4)',
+                  zIndex: 1000,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.4rem',
+                  border: '1px solid var(--border-color)'
+                }}
+              >
+                <div style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border-color)', marginBottom: '0.25rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary)' }}>{currentUser.name}</div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{currentUser.email}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.15rem' }}>
+                    Role: {currentUser.role === 'candidate' ? 'Job Seeker (Candidate)' : 'Hiring Manager (Employer)'}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setCurrentView('profile');
+                    setUserDropdownOpen(false);
+                  }}
+                  className="btn btn-sm"
+                  style={{ justifyContent: 'flex-start', background: 'none', border: 'none', padding: '0.4rem 0.5rem' }}
+                >
+                  <User size={14} /> My Profile & Privacy
+                </button>
+
+                <button
+                  id="navbar-register-btn"
+                  onClick={() => {
+                    onOpenAuthModal('register');
+                    setUserDropdownOpen(false);
+                  }}
+                  className="btn btn-sm"
+                  style={{ justifyContent: 'flex-start', background: 'none', border: 'none', padding: '0.4rem 0.5rem', color: 'var(--primary)', fontWeight: 700 }}
+                >
+                  <UserPlus size={14} /> Register New User
+                </button>
+
+                <button
+                  id="navbar-signin-btn"
+                  onClick={() => {
+                    onOpenAuthModal('login');
+                    setUserDropdownOpen(false);
+                  }}
+                  className="btn btn-sm"
+                  style={{ justifyContent: 'flex-start', background: 'none', border: 'none', padding: '0.4rem 0.5rem' }}
+                >
+                  <LogIn size={14} /> Switch Account / Sign In
+                </button>
+              </div>
             )}
-          </button>
+          </div>
 
           {/* Mobile Menu Hamburger */}
           <button
@@ -264,41 +407,50 @@ export default function Navbar({
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="mobile-nav-drawer">
-          <div style={{ padding: '0.5rem 0', borderBottom: '1px solid var(--border-color)', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Current User: {currentUser.name} ({currentUser.role})
-            </span>
+        <div className="mobile-menu animate-fade-in" style={{ padding: '1rem', background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-color)' }}>
+          {/* Mobile Portal Switcher */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
+            <button
+              onClick={() => {
+                handlePortalSwitch('candidate');
+                setMobileMenuOpen(false);
+              }}
+              className={`btn btn-sm ${portalMode === 'candidate' ? 'btn-primary' : ''}`}
+            >
+              Candidate Portal
+            </button>
+            <button
+              onClick={() => {
+                handlePortalSwitch('employer');
+                setMobileMenuOpen(false);
+              }}
+              className={`btn btn-sm ${portalMode === 'employer' ? 'btn-primary' : ''}`}
+            >
+              Employer Portal
+            </button>
           </div>
-          {navItems.map(item => {
-            const Icon = item.icon;
-            const isActive = currentView === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setCurrentView(item.id);
-                  setMobileMenuOpen(false);
-                }}
-                className={`mobile-nav-item ${isActive ? 'active' : ''}`}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-          <button
-            onClick={() => {
-              setCurrentView('profile');
-              setMobileMenuOpen(false);
-            }}
-            className={`mobile-nav-item ${currentView === 'profile' ? 'active' : ''}`}
-          >
-            <User size={18} />
-            <span>My Profile</span>
-          </button>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {currentNavItems.map(item => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setCurrentView(item.id);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`btn ${currentView === item.id ? 'btn-primary' : ''}`}
+                  style={{ justifyContent: 'flex-start' }}
+                >
+                  <Icon size={16} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </header>

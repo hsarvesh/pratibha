@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
+import CandidateHome from './components/CandidateHome';
 import JobBoard from './components/JobBoard';
 import JobDetailsModal from './components/JobDetailsModal';
 import MockInterviewSimulator from './components/MockInterviewSimulator';
@@ -12,9 +13,12 @@ import PricingPlans from './components/PricingPlans';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import LLMConfigModal from './components/LLMConfigModal';
 import GlobalLandingIntro from './components/GlobalLandingIntro';
+import AuthModal from './components/AuthModal';
+import CandidateATSPreviewModal from './components/CandidateATSPreviewModal';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('jobs');
+  const [portalMode, setPortalMode] = useState('candidate'); // 'candidate' | 'employer'
+  const [currentView, setCurrentView] = useState('candidate-home');
   const [theme, setTheme] = useState(() => localStorage.getItem('pratibha_theme') || 'dark');
   const [userId, setUserId] = useState('candidate_1');
   const [currentUser, setCurrentUser] = useState(null);
@@ -26,6 +30,9 @@ export default function App() {
   const [preselectedJobForInterview, setPreselectedJobForInterview] = useState(null);
   const [showLLMModal, setShowLLMModal] = useState(false);
   const [showLandingIntro, setShowLandingIntro] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState('register');
+  const [showATSPreview, setShowATSPreview] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Sync theme to document
@@ -43,8 +50,13 @@ export default function App() {
     try {
       const res = await fetch(`/api/users/${id}`);
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.user) {
         setCurrentUser(data.user);
+        if (data.user.role === 'employer') {
+          setPortalMode('employer');
+        } else {
+          setPortalMode('candidate');
+        }
       }
     } catch (err) {
       console.error('Error fetching user:', err);
@@ -104,14 +116,31 @@ export default function App() {
     init();
   }, [userId]);
 
-  // Switch role between Job Seeker (candidate_1) and Employer (employer_1)
+  // Switch role between Job Seeker and Employer
   const switchUserRole = (newUserId) => {
     setUserId(newUserId);
-    if (newUserId === 'employer_1') {
+    if (newUserId.includes('employer')) {
+      setPortalMode('employer');
       setCurrentView('applications'); // View ATS Pipeline
     } else {
-      setCurrentView('jobs');
+      setPortalMode('candidate');
+      setCurrentView('candidate-home');
     }
+  };
+
+  // Handle successful registration or login
+  const handleAuthSuccess = (authUser) => {
+    setCurrentUser(authUser);
+    setUserId(authUser.id);
+    if (authUser.role === 'employer') {
+      setPortalMode('employer');
+      setCurrentView('applications');
+    } else {
+      setPortalMode('candidate');
+      setCurrentView('candidate-home');
+    }
+    loadJobs(authUser.id);
+    loadNotifications(authUser.id);
   };
 
   // Submit Job Application
@@ -260,10 +289,12 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Universal Responsive Navbar */}
+      {/* Universal Responsive Navbar with 2 Distinct Portals Switcher */}
       <Navbar
         currentView={currentView}
         setCurrentView={setCurrentView}
+        portalMode={portalMode}
+        setPortalMode={setPortalMode}
         currentUser={currentUser}
         switchUserRole={switchUserRole}
         theme={theme}
@@ -272,95 +303,126 @@ export default function App() {
         markNotificationRead={handleMarkNotificationRead}
         onOpenLLMConfig={() => setShowLLMModal(true)}
         onOpenLandingIntro={() => setShowLandingIntro(true)}
+        onOpenAuthModal={(tab = 'register') => {
+          setAuthModalTab(tab);
+          setShowAuthModal(true);
+        }}
       />
 
       {/* Main Content Area */}
       <main className="main-content">
-        {currentView === 'jobs' && (
-          <JobBoard
-            jobs={jobs}
-            currentUser={currentUser}
-            onSelectJob={(job) => setSelectedJobForModal(job)}
-            onStartInterview={handleStartInterview}
-            savedJobIds={savedJobIds}
-            onToggleSaveJob={handleToggleSaveJob}
-          />
+        {/* CANDIDATE PORTAL VIEWS */}
+        {portalMode === 'candidate' && (
+          <>
+            {currentView === 'candidate-home' && (
+              <CandidateHome
+                currentUser={currentUser}
+                jobs={jobs}
+                applications={applications}
+                onNavigate={(v) => setCurrentView(v)}
+                onSelectJob={(job) => setSelectedJobForModal(job)}
+                onStartInterview={handleStartInterview}
+                onOpenProfilePreview={() => setShowATSPreview(true)}
+              />
+            )}
+
+            {currentView === 'jobs' && (
+              <JobBoard
+                jobs={jobs}
+                currentUser={currentUser}
+                onSelectJob={(job) => setSelectedJobForModal(job)}
+                onStartInterview={handleStartInterview}
+                savedJobIds={savedJobIds}
+                onToggleSaveJob={handleToggleSaveJob}
+              />
+            )}
+
+            {currentView === 'profile' && (
+              <UserProfile
+                currentUser={currentUser}
+                onUpdateProfile={handleUpdateProfile}
+                onAddSkill={handleAddSkill}
+              />
+            )}
+
+            {currentView === 'applications' && (
+              <CandidateApplications
+                applications={applications}
+                currentUser={currentUser}
+                onStartInterview={handleStartInterview}
+                onBrowseJobs={() => setCurrentView('jobs')}
+              />
+            )}
+
+            {currentView === 'interview-coach' && (
+              <MockInterviewSimulator
+                jobs={jobs}
+                currentUser={currentUser}
+                preselectedJob={preselectedJobForInterview}
+                onSaveSession={() => {}}
+              />
+            )}
+
+            {currentView === 'resume-studio' && (
+              <ResumeStudio
+                currentUser={currentUser}
+                onUpdateProfile={handleUpdateProfile}
+              />
+            )}
+
+            {currentView === 'career-guidance' && (
+              <CareerPathGuidance currentUser={currentUser} />
+            )}
+          </>
         )}
 
-        {currentView === 'applications' && (
-          currentUser.role === 'candidate' ? (
-            <CandidateApplications
-              applications={applications}
-              currentUser={currentUser}
-              onStartInterview={handleStartInterview}
-              onBrowseJobs={() => setCurrentView('jobs')}
-            />
-          ) : (
-            <HiringManagerATS
-              currentUser={currentUser}
-              jobs={jobs}
-              onJobCreated={handleJobCreated}
-              applications={applications}
-              onUpdateApplicationStatus={handleUpdateApplicationStatus}
-              onSubmitFeedback={handleSubmitFeedback}
-            />
-          )
-        )}
+        {/* EMPLOYER PORTAL VIEWS */}
+        {portalMode === 'employer' && (
+          <>
+            {currentView === 'applications' && (
+              <HiringManagerATS
+                currentUser={currentUser.role === 'employer' ? currentUser : {
+                  id: 'employer_1',
+                  role: 'employer',
+                  name: 'Vikramaditya Rao',
+                  company: 'CloudScale Technologies'
+                }}
+                jobs={jobs}
+                onJobCreated={handleJobCreated}
+                applications={applications}
+                onUpdateApplicationStatus={handleUpdateApplicationStatus}
+                onSubmitFeedback={handleSubmitFeedback}
+              />
+            )}
 
-        {currentView === 'interview-coach' && (
-          <MockInterviewSimulator
-            jobs={jobs}
-            currentUser={currentUser}
-            preselectedJob={preselectedJobForInterview}
-            onSaveSession={() => {}}
-          />
-        )}
+            {currentView === 'hiring-hub' && (
+              <HiringManagerATS
+                currentUser={currentUser.role === 'employer' ? currentUser : {
+                  id: 'employer_1',
+                  role: 'employer',
+                  name: 'Vikramaditya Rao',
+                  company: 'CloudScale Technologies'
+                }}
+                jobs={jobs}
+                onJobCreated={handleJobCreated}
+                applications={applications}
+                onUpdateApplicationStatus={handleUpdateApplicationStatus}
+                onSubmitFeedback={handleSubmitFeedback}
+              />
+            )}
 
-        {currentView === 'resume-studio' && (
-          <ResumeStudio
-            currentUser={currentUser}
-            onUpdateProfile={handleUpdateProfile}
-          />
-        )}
+            {currentView === 'analytics' && (
+              <AnalyticsDashboard />
+            )}
 
-        {currentView === 'career-guidance' && (
-          <CareerPathGuidance currentUser={currentUser} />
-        )}
-
-        {currentView === 'hiring-hub' && (
-          <HiringManagerATS
-            currentUser={currentUser.role === 'employer' ? currentUser : {
-              id: 'employer_1',
-              role: 'employer',
-              name: 'Vikramaditya Rao',
-              company: 'CloudScale Technologies'
-            }}
-            jobs={jobs}
-            onJobCreated={handleJobCreated}
-            applications={applications}
-            onUpdateApplicationStatus={handleUpdateApplicationStatus}
-            onSubmitFeedback={handleSubmitFeedback}
-          />
-        )}
-
-        {currentView === 'profile' && (
-          <UserProfile
-            currentUser={currentUser}
-            onUpdateProfile={handleUpdateProfile}
-            onAddSkill={handleAddSkill}
-          />
-        )}
-
-        {currentView === 'pricing' && (
-          <PricingPlans currentUser={currentUser} />
-        )}
-
-        {currentView === 'analytics' && (
-          <AnalyticsDashboard />
+            {currentView === 'pricing' && (
+              <PricingPlans currentUser={currentUser} />
+            )}
+          </>
         )}
       </main>
 
-      {/* Deep-Dive Job Details Modal with Parameterized Scorecard & Application */}
+      {/* Deep-Dive Job Details Modal */}
       {selectedJobForModal && (
         <JobDetailsModal
           job={selectedJobForModal}
@@ -372,7 +434,22 @@ export default function App() {
         />
       )}
 
-      {/* Modular LLM Configuration Modal (Provider, URL, and long text box for all parameters) */}
+      {/* User Registration & Sign In Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onAuthSuccess={handleAuthSuccess}
+        initialTab={authModalTab}
+      />
+
+      {/* Candidate ATS Preview Modal */}
+      <CandidateATSPreviewModal
+        isOpen={showATSPreview}
+        onClose={() => setShowATSPreview(false)}
+        candidate={currentUser}
+      />
+
+      {/* Modular LLM Configuration Modal */}
       {showLLMModal && (
         <LLMConfigModal
           onClose={() => setShowLLMModal(false)}
@@ -390,14 +467,14 @@ export default function App() {
       <footer style={{ borderTop: '1px solid var(--border-color)', padding: '2rem 1.5rem', background: 'var(--bg-secondary)', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
         <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <strong>Pratibha</strong> — Empowering Job Seekers & Transparent Hiring with AI Intelligence.
+            <strong>Pratibha</strong> — AI Career Guidance, Verified Precision Matching & Parameterized Hiring.
           </div>
           <div style={{ display: 'flex', gap: '1.25rem' }}>
+            <span>Candidate Data Sovereignty</span>
+            <span>•</span>
             <span>GDPR & Privacy Compliant</span>
             <span>•</span>
             <span>Parameterized ATS Standard</span>
-            <span>•</span>
-            <span>WCAG 2.1 AAA Accessibility</span>
           </div>
         </div>
       </footer>

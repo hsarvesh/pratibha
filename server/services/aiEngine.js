@@ -359,10 +359,10 @@ export async function queryLocalLLM(messages, options = {}) {
     ...(parsedParams.custom_headers || {})
   };
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+  try {
     const reqBody = {
       model: config.modelName || 'Qwen3-0.6B-Q4_K_M-Instruct.gguf',
       messages: effectiveMessages,
@@ -378,7 +378,6 @@ export async function queryLocalLLM(messages, options = {}) {
       body: JSON.stringify(reqBody),
       signal: controller.signal
     });
-    clearTimeout(timeoutId);
 
     if (!res.ok) return null;
     const data = await res.json();
@@ -388,6 +387,8 @@ export async function queryLocalLLM(messages, options = {}) {
   } catch (err) {
     console.error('Modular LLM invocation error:', err.message);
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
